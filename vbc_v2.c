@@ -1,14 +1,5 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<unistd.h>
+#include"vbc_v2.h"
 
-typedef struct node
-{
-	enum{ADD, MULTI, VAL} type;
-	int val;
-	struct node *l;
-	struct node *r;
-} node;
 
 node *new_node(node n)
 {
@@ -37,6 +28,7 @@ int unexpected(char c)
 		printf("Unexpected token '%c'\n", c);
 	else
 		printf("Unexpected end of input\n");
+	return(1);
 }
 
 int accept(char** s, char c)
@@ -57,20 +49,78 @@ int expect(char **s, char c)
 	return(0);
 }
 
+node* parse_val(char** s)
+{
+	node n;
 
-//..
+	if(isdigit(**s))
+	{
+		n.type = VAL;
+		n.val = **s - 48;
+		node* ret = new_node(n);
+		(*s)++;
+		return(ret);
+	}
 
+	if(accept(s, '('))
+	{
+		node* ret = parse_add(s);
+		expect(s,')');
+		return(ret);
+	}
+
+	unexpected(**s);
+	return(NULL);
+}
+
+node* parse_multi(char** s)
+{
+	node* l = parse_val(s);
+
+	while(accept(s, '*'))
+	{
+		node* r = parse_val(s);
+		if(!r)
+			return(NULL);
+		node n;
+		n.type = MULTI;
+		n.l = l;
+		n.r = r;
+		l = new_node(n);
+	}
+
+	return(l);
+}
+
+node* parse_add(char** s)
+{
+	node* l = parse_multi(s);
+
+	while(accept(s, '+'))
+	{
+		node* r = parse_multi(s);
+		if(!r)
+			return(NULL);
+		node n;
+		n.type = ADD;
+		n.l = l;
+		n.r = r;
+		l = new_node(n);
+	}
+
+	return(l);
+}
 
 node* parse_expr(char *s)
 {
-	//..
+	node* l = parse_add(&s);
 
 	if(*s)
 	{
-		destroy_tree(ret);
+		destroy_tree(l);
 		return(NULL);
 	}
-	return(ret);
+	return(l);
 }
 
 int eval_tree(node *tree)
@@ -83,6 +133,8 @@ int eval_tree(node *tree)
 			return(eval_tree(tree->l) * eval_tree(tree->r));
 		case VAL :
 			return(tree->val);
+		default :
+			perror("EVAL_TREE");
 	}
 }
 
@@ -96,3 +148,6 @@ int main(int argc, char** argv)
 	printf("%d\n", eval_tree(tree));
 	destroy_tree(tree);
 }
+
+//cc vbc_V2.c  -o vbc -Wall -Wextra -Werror
+//./vbc "(2+(3+2)+6*2+2)*2"
