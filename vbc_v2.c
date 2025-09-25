@@ -65,10 +65,11 @@ node* parse_val(char** s)
 	if(accept(s, '('))
 	{
 		node* ret = parse_add(s);
-		expect(s,')');
-		return(ret);
+		if(expect(s,')'))
+			return(ret);
+		destroy_tree(ret);
+		return(NULL);
 	}
-
 	unexpected(**s);
 	return(NULL);
 }
@@ -76,12 +77,17 @@ node* parse_val(char** s)
 node* parse_multi(char** s)
 {
 	node* l = parse_val(s);
+	if(!l)
+		return(NULL);
 
 	while(accept(s, '*'))
 	{
 		node* r = parse_val(s);
 		if(!r)
+		{
+			destroy_tree(l);
 			return(NULL);
+		}
 		node n;
 		n.type = MULTI;
 		n.l = l;
@@ -95,12 +101,17 @@ node* parse_multi(char** s)
 node* parse_add(char** s)
 {
 	node* l = parse_multi(s);
+	if(!l)
+		return(NULL);
 
 	while(accept(s, '+'))
 	{
 		node* r = parse_multi(s);
 		if(!r)
+		{
+			destroy_tree(l);
 			return(NULL);
+		}
 		node n;
 		n.type = ADD;
 		n.l = l;
@@ -114,6 +125,8 @@ node* parse_add(char** s)
 node* parse_expr(char *s)
 {
 	node* l = parse_add(&s);
+	if(!l)
+		return(NULL);
 
 	if(*s)
 	{
