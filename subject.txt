@@ -17,7 +17,7 @@ exemples :
 1$
 ./vbc '2+3'| cat -e
 5$
-./vbc '(((((2+2*2+2)*2+2)*2+2)*2+2)*2+2)*2'| cat -e
+./vbc '(((((2+2)*2+2)*2+2)*2+2)*2+2)*2'| cat -e
 188$
 ./vbc '1+'
 unexpected end of input

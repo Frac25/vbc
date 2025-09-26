@@ -1,4 +1,5 @@
-#include"vbc_v1.h"
+#include"vbc.h"
+
 
 node *new_node(node n)
 {
@@ -27,7 +28,7 @@ int unexpected(char c)
 		printf("Unexpected token '%c'\n", c);
 	else
 		printf("Unexpected end of input\n");
-	return(0);
+	return(1);
 }
 
 int accept(char** s, char c)
@@ -51,18 +52,23 @@ int expect(char **s, char c)
 node* parse_val(char** s)
 {
 	node n;
+
 	if(isdigit(**s))
 	{
-		n.val = **s - 48;
 		n.type = VAL;
+		n.val = **s - 48;
+		node* ret = new_node(n);
 		(*s)++;
-		return (new_node(n));
+		return(ret);
 	}
+
 	if(accept(s, '('))
 	{
-		node* pn = parse_expr(s);
-		expect(s, ')');
-		return(pn);
+		node* ret = parse_add(s);
+		if(expect(s,')'))
+			return(ret);
+		destroy_tree(ret);
+		return(NULL);
 	}
 	unexpected(**s);
 	return(NULL);
@@ -70,44 +76,66 @@ node* parse_val(char** s)
 
 node* parse_multi(char** s)
 {
-	node *l = parse_val(s);
+	node* l = parse_val(s);
+	if(!l)
+		return(NULL);
+
 	while(accept(s, '*'))
 	{
-		node *r = parse_val(s);
-		node n ;
+		node* r = parse_val(s);
+		if(!r)
+		{
+//			unexpected(**s);
+			destroy_tree(l);
+			return(NULL);
+		}
+		node n;
 		n.type = MULTI;
 		n.l = l;
 		n.r = r;
 		l = new_node(n);
 	}
+
 	return(l);
 }
 
-node* parse_expr(char **s)
+node* parse_add(char** s)
 {
-//	printf("parse_expr %s\n", *s);
-
 	node* l = parse_multi(s);
+	if(!l)
+		return(NULL);
 
 	while(accept(s, '+'))
 	{
-		node *r = parse_multi(s);
-		node n ;
+		node* r = parse_multi(s);
+		if(!r)
+		{
+//			unexpected(**s);
+			destroy_tree(l);
+			return(NULL);
+		}
+		node n;
 		n.type = ADD;
 		n.l = l;
 		n.r = r;
 		l = new_node(n);
 	}
 
-//	printf("s = %s val = %d type = %d\n", s, ret->val, ret->type);
+	return(l);
+}
 
+node* parse_expr(char *s)
+{
+	node* l = parse_add(&s);
+	if(!l)
+		return(NULL);
 
-//	if(**s)
-//	{
-//		//destroy_tree(l);
-//		printf("s = %s val = %d type = %d\n", *s, l->val, l->type);
-//		return(NULL);
-//	}
+	if(*s && l!=NULL)
+	{
+		unexpected(*s);
+		destroy_tree(l);
+		return(NULL);
+	}
 	return(l);
 }
 
@@ -121,25 +149,21 @@ int eval_tree(node *tree)
 			return(eval_tree(tree->l) * eval_tree(tree->r));
 		case VAL :
 			return(tree->val);
+		default :
+			perror("EVAL_TREE");
 	}
-	return(0);
 }
 
 int main(int argc, char** argv)
 {
 	if(argc != 2)
-	{
-		perror("argv KO");
 		return(1);
-	}
-
-	node* tree = parse_expr(&argv[1]);
-
+	node* tree = parse_expr(argv[1]);
 	if(!tree)
 		return(1);
-
 	printf("%d\n", eval_tree(tree));
 	destroy_tree(tree);
-	return(0);
 }
 
+//cc vbc_V2.c  -o vbc -Wall -Wextra -Werror
+//./vbc "(2+(3+2)+6*2+2)*2"
